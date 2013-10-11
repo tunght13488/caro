@@ -1,6 +1,8 @@
 var moves = [];
 var board = {};
 
+Session.set('moves', moves);
+
 Meteor.startup(function () {
 
   var gridSize = 32;
@@ -13,7 +15,7 @@ Meteor.startup(function () {
 
   function drawGrid() {
     context.beginPath();
-    context.strokeStyle = "#ccc";
+    context.strokeStyle = "#aaa";
 
     for (var x = 0; x <= gridSize * 20; x += gridSize) {
       context.moveTo(x, 0);
@@ -29,11 +31,25 @@ Meteor.startup(function () {
     context.closePath();
   }
 
+  function drawRect(i, j, color) {
+    color = typeof color !== 'undefined' ? color : '#ff0';
+    var x = i * gridSize;
+    var y = j * gridSize;
+    context.beginPath();
+    context.fillStyle = color;
+    context.fillRect(x + 1, y + 1, gridSize - 2, gridSize - 2);
+    context.stroke();
+    context.closePath();
+  }
+
   function drawMoves() {
     var count = 0;
     for (var i in moves) {
       var move = moves[i];
       count++;
+      if (move.i === lastMoveX && move.j === lastMoveY) {
+        drawRect(move.i, move.j, '#ccc');
+      }
       if (count % 2 == 1) {
         drawCross(move.i, move.j);
       } else {
@@ -50,7 +66,7 @@ Meteor.startup(function () {
     var y = j * gridSize + gridSize / 2;
     var radius = 11;
     context.beginPath();
-    context.strokeStyle = "#00f";
+    context.strokeStyle = "#0a0";
     context.arc(x, y, radius, 0, Math.PI * 2);
     context.stroke();
     context.closePath();
@@ -72,13 +88,12 @@ Meteor.startup(function () {
     context.closePath();
   }
 
-  function drawSquare(i, j) {
-    // 1 => 0
-    // 2 => 32
+  function drawSquare(i, j, color) {
+    color = typeof color !== 'undefined' ? color : '#000';
     var x = i * gridSize;
     var y = j * gridSize;
     context.beginPath();
-    context.strokeStyle = "#000";
+    context.strokeStyle = color;
     context.strokeRect(x, y, gridSize, gridSize);
     context.stroke();
     context.closePath();
@@ -95,6 +110,7 @@ Meteor.startup(function () {
     };
   }
 
+  var lastMoveX, lastMoveY;
   var addMove = function (e) {
     var pos = getPosition(e);
     var i = pos.i,
@@ -104,7 +120,9 @@ Meteor.startup(function () {
       existed = true;
     }
     if (!existed) {
-      moves.push({i: pos.i, j: pos.j});
+      moves.push({i: i, j: j});
+      lastMoveX = i;
+      lastMoveY = j;
       if (!(i in board)) {
         board[i] = {};
       }
@@ -112,7 +130,7 @@ Meteor.startup(function () {
         board[i][j] = true;
       }
       redraw();
-      drawSquare(pos.i, pos.j);
+      drawSquare(i, j);
     }
   };
 
