@@ -1,9 +1,13 @@
+var moves = [];
+
 Meteor.startup(function () {
 
   var gridSize = 32;
 
   var canvas = document.getElementById('board');
   var context = canvas.getContext('2d');
+  var canvasWidth = canvas.width;
+  var canvasHeight = canvas.height;
 
   function drawGrid() {
     context.beginPath();
@@ -21,6 +25,19 @@ Meteor.startup(function () {
 
     context.stroke();
     context.closePath();
+  }
+
+  function drawMoves() {
+    var count = 0;
+    for (var i in moves) {
+      var move = moves[i];
+      count++;
+      if (count % 2 == 1) {
+        drawCross(move.i, move.j);
+      } else {
+        drawCircle(move.i, move.j);
+      }
+    }
   }
 
   function drawCircle(i, j) {
@@ -55,8 +72,8 @@ Meteor.startup(function () {
   function drawSquare(i, j) {
     // 1 => 0
     // 2 => 32
-    var x = (i - 1) * gridSize;
-    var y = (j - 1) * gridSize;
+    var x = i * gridSize;
+    var y = j * gridSize;
     context.beginPath();
     context.strokeStyle = "#000";
     context.strokeRect(x, y, gridSize, gridSize);
@@ -64,25 +81,41 @@ Meteor.startup(function () {
     context.closePath();
   }
 
-  var isCross = true;
-
-  canvas.addEventListener("mousedown", function (e) {
-    var mx = e.clientX - canvas.clientLeft;
-    var my = e.clientY - canvas.clientTop;
+  function getPosition(e) {
+    var mx = e.clientX - canvas.offsetLeft;
+    var my = e.clientY - canvas.offsetTop;
     var i = Math.floor(mx / gridSize);
     var j = Math.floor(my / gridSize);
-    if (isCross) {
-      drawCross(i, j);
-      isCross = false;
-    } else {
-      drawCircle(i, j);
-      isCross = true;
+    return {
+      i: i,
+      j: j
+    };
+  }
+
+  canvas.addEventListener("mousedown", function (e) {
+    var pos = getPosition(e);
+    moves.push({i: pos.i, j: pos.j});
+    redraw();
+    drawSquare(pos.i, pos.j);
+  }, false);
+
+  var lastI, lastJ;
+  canvas.addEventListener("mousemove", function (e) {
+    var pos = getPosition(e);
+    if (pos.i != lastI || pos.j != lastJ) {
+      lastI = pos.i;
+      lastJ = pos.j;
+      redraw();
+      drawSquare(pos.i, pos.j);
     }
   }, false);
 
-  drawGrid();
-  // drawCircle(2, 3);
-  // drawCross(4, 9);
-  // drawSquare(5, 6);
+  function redraw() {
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
+    drawGrid();
+    drawMoves();
+  }
+
+  redraw();
 
 });
