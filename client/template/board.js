@@ -1,12 +1,13 @@
 var moves = [];
+var marks = {};
 
 Meteor.startup(function () {
 
   var gridSize = 32;
 
-  var canvas = document.getElementById('board');
-  var context = canvas.getContext('2d');
-  var canvasWidth = canvas.width;
+  var canvas       = document.getElementById('board');
+  var context      = canvas.getContext('2d');
+  var canvasWidth  = canvas.width;
   var canvasHeight = canvas.height;
 
   function drawGrid() {
@@ -94,9 +95,23 @@ Meteor.startup(function () {
 
   canvas.addEventListener("mousedown", function (e) {
     var pos = getPosition(e);
-    moves.push({i: pos.i, j: pos.j});
-    redraw();
-    drawSquare(pos.i, pos.j);
+    var i = pos.i,
+      j = pos.j;
+    var existed = false;
+    if (i in marks && j in marks[i]) {
+      existed = true;
+    }
+    if (!existed) {
+      moves.push({i: pos.i, j: pos.j});
+      if (!(i in marks)) {
+        marks[i] = {};
+      }
+      if (!(j in marks[i])) {
+        marks[i][j] = true;
+      }
+      redraw();
+      drawSquare(pos.i, pos.j);
+    }
   }, false);
 
   var lastI, lastJ;
