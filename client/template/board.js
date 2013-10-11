@@ -1,5 +1,5 @@
 var moves = [];
-var marks = {};
+var board = {};
 
 Meteor.startup(function () {
 
@@ -9,6 +9,7 @@ Meteor.startup(function () {
   var context      = canvas.getContext('2d');
   var canvasWidth  = canvas.width;
   var canvasHeight = canvas.height;
+  var nextMove     = 1; // 1 for cross, 2 for circle
 
   function drawGrid() {
     context.beginPath();
@@ -39,6 +40,7 @@ Meteor.startup(function () {
         drawCircle(move.i, move.j);
       }
     }
+    nextMove = count % 2 == 0 ? 1 : 2;
   }
 
   function drawCircle(i, j) {
@@ -83,8 +85,8 @@ Meteor.startup(function () {
   }
 
   function getPosition(e) {
-    var mx = e.clientX - canvas.offsetLeft;
-    var my = e.clientY - canvas.offsetTop;
+    var mx = e.pageX - canvas.offsetLeft;
+    var my = e.pageY - canvas.offsetTop;
     var i = Math.floor(mx / gridSize);
     var j = Math.floor(my / gridSize);
     return {
@@ -93,29 +95,29 @@ Meteor.startup(function () {
     };
   }
 
-  canvas.addEventListener("mousedown", function (e) {
+  var addMove = function (e) {
     var pos = getPosition(e);
     var i = pos.i,
       j = pos.j;
     var existed = false;
-    if (i in marks && j in marks[i]) {
+    if (i in board && j in board[i]) {
       existed = true;
     }
     if (!existed) {
       moves.push({i: pos.i, j: pos.j});
-      if (!(i in marks)) {
-        marks[i] = {};
+      if (!(i in board)) {
+        board[i] = {};
       }
-      if (!(j in marks[i])) {
-        marks[i][j] = true;
+      if (!(j in board[i])) {
+        board[i][j] = true;
       }
       redraw();
       drawSquare(pos.i, pos.j);
     }
-  }, false);
+  };
 
   var lastI, lastJ;
-  canvas.addEventListener("mousemove", function (e) {
+  var hover = function (e) {
     var pos = getPosition(e);
     if (pos.i != lastI || pos.j != lastJ) {
       lastI = pos.i;
@@ -123,7 +125,11 @@ Meteor.startup(function () {
       redraw();
       drawSquare(pos.i, pos.j);
     }
-  }, false);
+  };
+
+  canvas.addEventListener("mousedown", addMove, false);
+
+  canvas.addEventListener("mousemove", hover, false);
 
   function redraw() {
     context.clearRect(0, 0, canvasWidth, canvasHeight);
