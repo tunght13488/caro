@@ -1,7 +1,7 @@
 if (!String.prototype.format) {
   String.prototype.format = function () {
     var args = arguments;
-    return this.replace(/{(\d+)}/g, function (match, number) {
+    return this.replace(/\{(\d+)\}/g, function (match, number) {
       return typeof args[number] != 'undefined'
         ? args[number]
         : match;
@@ -54,13 +54,13 @@ var Board = function (width, height, gridSize, canvas) {
     }
   };
 
-  var inBoard = function (x, y) {
-    return x > 0 && x <= width && y > 0 && y <= height;
+  var inBoard = function (i, j) {
+    return i > 0 && i <= width && j > 0 && j <= height;
   };
 
-  var checkInBoard = function (x, y) {
-    if (!inBoard(x, y)) {
-      throw new Error("Not in board: ({0}, {1})".format(x, y));
+  var checkInBoard = function (i, j) {
+    if (!inBoard(i, j)) {
+      throw new Error("Not in board: ({0}, {1})".format(i, j));
     }
   };
 
@@ -87,13 +87,12 @@ var Board = function (width, height, gridSize, canvas) {
   var drawLastMove = function () {
     var x, y;
 
-    x = lastMove.x * gridSize;
-    y = lastMove.y * gridSize;
+    x = lastMove.i * gridSize;
+    y = lastMove.j * gridSize;
 
     context.beginPath();
-    context.strokeStyle = lastMoveColor;
+    context.fillStyle = lastMoveColor;
     context.fillRect(x + lastMovePadding, y + lastMovePadding, gridSize - lastMovePadding * 2, gridSize - lastMovePadding * 2);
-    context.stroke();
     context.closePath();
   };
 
@@ -145,26 +144,26 @@ var Board = function (width, height, gridSize, canvas) {
   var drawHover = function () {
     var x, y;
 
-    x = lastPosition.x * gridSize;
-    y = lastPosition.y * gridSize;
+    x = lastPosition.i * gridSize;
+    y = lastPosition.j * gridSize;
 
     context.beginPath();
     context.strokeStyle = hoverColor;
     context.strokeRect(x, y, gridSize, gridSize);
     context.stroke();
     context.closePath();
-  }
-
-  var getMove = function (x, y) {
-    checkInBoard(x, y);
-
-    return board[x][y];
   };
 
-  var isExist = function (x, y) {
-    checkInBoard(x, y);
+  var getMove = function (i, j) {
+    checkInBoard(i, j);
 
-    return board[x][y] !== empty;
+    return board[i][j];
+  };
+
+  var isExist = function (i, j) {
+    checkInBoard(i, j);
+
+    return board[i][j] !== empty;
   };
 
   var redraw = function () {
@@ -176,64 +175,71 @@ var Board = function (width, height, gridSize, canvas) {
   };
 
   var getPosition = function (e) {
-    var mx, my, x, y;
+    var mx, my, i, j;
 
     mx = e.pageX - canvas.offsetLeft;
     my = e.pageY - canvas.offsetTop;
-    x = Math.floor(mx / gridSize);
-    y = Math.floor(my / gridSize);
-
-    if (lastPosition.x !== x) {
-      lastPosition.x = x;
-    }
-
-    if (lastPosition.y !== y) {
-      lastPosition.y = y;
-    }
+    i = Math.floor(mx / gridSize);
+    j = Math.floor(my / gridSize);
 
     return {
-      x: x,
-      y: y
+      i: i,
+      j: j
     };
   };
 
-  var addMoveHandler = function (e) {
-    if (gameOver) {
-      // Do nothing
-      return;
-    }
+  var addMove = function (i, j) {
+    if (!isExist(i, j)) {
+      started = true;
+      var type, move;
 
-    var mousePosition = getPosition(e);
-    var i = mousePosition.x,
-      j = mousePosition.y;
-    var existed = false;
-    if (board.hasOwnProperty(i) && board[i].hasOwnProperty(j)) {
-      existed = true;
+      type = lastMove.type === cross ? circle : cross;
+      move = {
+        i: i,
+        j: j,
+        type: type
+      };
+
+      moves.push(move);
+      lastMove = move;
     }
-    if (!existed) {
-      moves.push({i: i, j: j});
-      lastMoveX = i;
-      lastMoveY = j;
-      if (!board.hasOwnProperty(i)) {
-        board[i] = {};
+  };
+
+  var determineWinner = function () {
+
+  };
+
+  var addMoveHandler = function (e) {
+    if (!gameOver) {
+      var mousePosition, i, j;
+
+      mousePosition = getPosition(e);
+      i = mousePosition.i;
+      j = mousePosition.j;
+      console.log(i, j);
+      console.log(moves);
+
+      if (inBoard(i, j) && !isExist(i, j)) {
+        addMove(i, j);
+        determineWinner();
+        redraw();
       }
-      if (!board[i].hasOwnProperty(j)) {
-        board[i][j] = nextMove;
-      }
-      console.log(board);
-      redraw();
-      drawSquare(i, j);
-      detemineWinner();
     }
   };
 
   var hoverHandler = function (e) {
-    var pos = getPosition(e);
-    if (pos.i !== lastI || pos.j !== lastJ) {
-      lastI = pos.i;
-      lastJ = pos.j;
+    var mousePosition, changed;
+
+    mousePosition = getPosition(e);
+    changed = false;
+
+    if (lastPosition.i !== mousePosition.i || lastPosition.j !== mousePosition.j) {
+      lastPosition = mousePosition;
+      changed = true;
+    }
+
+    if (changed) {
       redraw();
-      drawSquare(pos.i, pos.j);
     }
   };
 
@@ -244,6 +250,7 @@ var Board = function (width, height, gridSize, canvas) {
       canvas.height = gridSize * height;
       canvas.addEventListener("mousedown", addMoveHandler, false);
       canvas.addEventListener("mousemove", hoverHandler, false);
+      redraw();
     }
   };
 };
@@ -255,33 +262,12 @@ Meteor.startup(function () {
   var gridSize, width, height, canvas;
 
   gridSize = 32;
-  width = 24;
+  width = 32;
   height = 20;
   canvas = document.getElementById('board');
 
   var board = new Board(width, height, gridSize, canvas);
-
-  function drawRect(i, j, color) {
-    color = typeof color !== 'undefined' ? color : '#ff0';
-    var x = i * gridSize;
-    var y = j * gridSize;
-    context.beginPath();
-    context.fillStyle = color;
-    context.fillRect(x + 1, y + 1, gridSize - 2, gridSize - 2);
-    context.stroke();
-    context.closePath();
-  }
-
-  function drawSquare(i, j, color) {
-    color = typeof color !== 'undefined' ? color : '#000';
-    var x = i * gridSize;
-    var y = j * gridSize;
-    context.beginPath();
-    context.strokeStyle = color;
-    context.strokeRect(x, y, gridSize, gridSize);
-    context.stroke();
-    context.closePath();
-  }
+  board.initialize();
 
   var count = function (i, j, advance) {
     var move, count, x, y, k;
