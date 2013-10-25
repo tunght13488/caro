@@ -14,22 +14,26 @@ var Board = function (width, height, gridSize, canvas) {
   var board = [];
   var moves = [];
 
+  // Move type
   var empty = 0;
   var cross = 1;
   var circle = 2;
 
+  // Condition
   var started = false;
   var gameOver = false;
+  var winCondition = 5;
+  var winner = empty;
 
-  var nextMove = cross;
+  // Last
   var lastMove = {
-    x: null,
-    y: null,
+    i: null,
+    j: null,
     type: null
   };
   var lastPosition = {
-    x: null,
-    y: null
+    i: null,
+    j: null
   };
 
   // Color
@@ -43,6 +47,9 @@ var Board = function (width, height, gridSize, canvas) {
   var lastMovePadding = 1;
   var crossPadding = 6;
 
+  /*
+   * Board functions
+   */
   var initBoard = function () {
     // Empty board
     var i, j;
@@ -55,7 +62,7 @@ var Board = function (width, height, gridSize, canvas) {
   };
 
   var inBoard = function (i, j) {
-    return i > 0 && i <= width && j > 0 && j <= height;
+    return i >= 0 && i < width && j >= 0 && j < height;
   };
 
   var checkInBoard = function (i, j) {
@@ -64,6 +71,21 @@ var Board = function (width, height, gridSize, canvas) {
     }
   };
 
+  var getMove = function (i, j) {
+    checkInBoard(i, j);
+
+    return board[i][j];
+  };
+
+  var isExist = function (i, j) {
+    checkInBoard(i, j);
+
+    return board[i][j] !== empty;
+  };
+
+  /*
+   * Draw
+   */
   var drawGrid = function () {
     var x, y;
 
@@ -85,15 +107,17 @@ var Board = function (width, height, gridSize, canvas) {
   };
 
   var drawLastMove = function () {
-    var x, y;
+    if (lastMove.i !== null && lastMove.j !== null) {
+      var x, y;
 
-    x = lastMove.i * gridSize;
-    y = lastMove.j * gridSize;
+      x = lastMove.i * gridSize;
+      y = lastMove.j * gridSize;
 
-    context.beginPath();
-    context.fillStyle = lastMoveColor;
-    context.fillRect(x + lastMovePadding, y + lastMovePadding, gridSize - lastMovePadding * 2, gridSize - lastMovePadding * 2);
-    context.closePath();
+      context.beginPath();
+      context.fillStyle = lastMoveColor;
+      context.fillRect(x + lastMovePadding, y + lastMovePadding, gridSize - lastMovePadding * 2, gridSize - lastMovePadding * 2);
+      context.closePath();
+    }
   };
 
   var drawCircle = function (i, j) {
@@ -142,28 +166,18 @@ var Board = function (width, height, gridSize, canvas) {
   };
 
   var drawHover = function () {
-    var x, y;
+    if (lastPosition.i !== null && lastPosition.j !== null) {
+      var x, y;
 
-    x = lastPosition.i * gridSize;
-    y = lastPosition.j * gridSize;
+      x = lastPosition.i * gridSize;
+      y = lastPosition.j * gridSize;
 
-    context.beginPath();
-    context.strokeStyle = hoverColor;
-    context.strokeRect(x, y, gridSize, gridSize);
-    context.stroke();
-    context.closePath();
-  };
-
-  var getMove = function (i, j) {
-    checkInBoard(i, j);
-
-    return board[i][j];
-  };
-
-  var isExist = function (i, j) {
-    checkInBoard(i, j);
-
-    return board[i][j] !== empty;
+      context.beginPath();
+      context.strokeStyle = hoverColor;
+      context.strokeRect(x, y, gridSize, gridSize);
+      context.stroke();
+      context.closePath();
+    }
   };
 
   var redraw = function () {
@@ -201,12 +215,95 @@ var Board = function (width, height, gridSize, canvas) {
       };
 
       moves.push(move);
+      board[i][j] = type;
       lastMove = move;
     }
   };
 
   var determineWinner = function () {
+    var count = function (advI, advJ) {
+      var count = 0;
 
+      if (started) {
+        var move, ii, jj, k;
+
+        move = getMove(lastMove.i, lastMove.j);
+
+        ii = lastMove.i;
+        jj = lastMove.j;
+        for (k = 1; k < winCondition; k++) {
+          ii = advI(ii);
+          jj = advJ(jj);
+          if (!inBoard(ii, jj)) {
+            break;
+          }
+          if (getMove(ii, jj) !== move) {
+            break;
+          }
+          count++;
+        }
+      }
+
+      return count;
+    };
+
+    var dec = function (x) {
+      return x - 1;
+    };
+
+    var inc = function (x) {
+      return x + 1;
+    };
+
+    var stay = function (x) {
+      return x;
+    };
+
+    // Horizontal
+    var countLeft = count(dec, stay);
+    var countRight = count(inc, stay);
+    if (countLeft + countRight + 1 >= winCondition) {
+      winner = lastMove.type;
+      gameOver = true;
+      return;
+    }
+
+    // Vertical
+    var countUp = count(stay, dec);
+    var countDown = count(stay, inc);
+    if (countUp + countDown + 1 >= winCondition) {
+      winner = lastMove.type;
+      gameOver = true;
+      return;
+    }
+
+    // TopLeft to BottomRight
+    var countTopLeft = count(dec, dec);
+    var countBottomRight = count(inc, inc);
+    if (countTopLeft + countBottomRight + 1 >= winCondition) {
+      winner = lastMove.type;
+      gameOver = true;
+      return;
+    }
+
+    // BottomLeft to TopRight
+    var countTopRight = count(inc, dec);
+    var countBottomLeft = count(dec, inc);
+    if (countTopRight + countBottomLeft + 1 >= winCondition) {
+      winner = lastMove.type;
+      gameOver = true;
+    }
+  };
+
+  var congratulate = function (winner) {
+    var winnerMsg;
+    if (winner == cross) {
+      winnerMsg = 'Cross';
+    } else {
+      winnerMsg = 'Circle';
+    }
+
+    alert("Congratulation! {0} won!".format(winnerMsg));
   };
 
   var addMoveHandler = function (e) {
@@ -216,13 +313,15 @@ var Board = function (width, height, gridSize, canvas) {
       mousePosition = getPosition(e);
       i = mousePosition.i;
       j = mousePosition.j;
-      console.log(i, j);
-      console.log(moves);
 
       if (inBoard(i, j) && !isExist(i, j)) {
         addMove(i, j);
         determineWinner();
         redraw();
+      }
+
+      if (gameOver) {
+        congratulate(winner);
       }
     }
   };
@@ -243,19 +342,43 @@ var Board = function (width, height, gridSize, canvas) {
     }
   };
 
+  var initialize = function () {
+    initBoard();
+    canvas.width = gridSize * width;
+    canvas.height = gridSize * height;
+    canvas.addEventListener("mousedown", addMoveHandler, false);
+    canvas.addEventListener("mousemove", hoverHandler, false);
+    redraw();
+  };
+
+  var reset = function () {
+    board = [];
+    moves = [];
+    winner = empty;
+    started = false;
+    gameOver = false;
+    lastMove = {
+      i: null,
+      j: null,
+      type: null
+    };
+    lastPosition = {
+      i: null,
+      j: null
+    };
+
+    initialize();
+  };
+
   return {
-    initialize: function () {
-      initBoard();
-      canvas.width = gridSize * width;
-      canvas.height = gridSize * height;
-      canvas.addEventListener("mousedown", addMoveHandler, false);
-      canvas.addEventListener("mousemove", hoverHandler, false);
-      redraw();
-    }
+    initialize: initialize,
+    reset: reset
   };
 };
 
 // -----------------------------------------------------------------------------
+
+var board;
 
 Meteor.startup(function () {
 
@@ -263,58 +386,16 @@ Meteor.startup(function () {
 
   gridSize = 32;
   width = 32;
-  height = 20;
+  height = 16;
   canvas = document.getElementById('board');
 
-  var board = new Board(width, height, gridSize, canvas);
+  board = new Board(width, height, gridSize, canvas);
   board.initialize();
 
-  var count = function (i, j, advance) {
-    var move, count, x, y, k;
+});
 
-    if (!board.hasOwnProperty(i) || !board[i].hasOwnProperty(j)) {
-      return 0;
-    }
-
-    move = board[i][j];
-
-    x = i;
-    y = j;
-    count = 0;
-    for (k = 0; k < winCondition; k++) {
-      x = advance.i(x);
-      y = advance.j(y);
-      if (!board.hasOwnProperty(x) || !board[x].hasOwnProperty(y) || board[x][y] !== move) {
-        return count;
-      }
-    }
-  };
-
-  var detemineWinner = function () {
-    // Vertical
-    var straight;
-
-    var left = count(lastI, lastJ, {
-      i: function (i) {
-        return i;
-      },
-      j: function (j) {
-        return j - 1;
-      }
-    });
-
-    var right = count(lastI, lastJ, {
-      i: function (i) {
-        return i;
-      },
-      j: function (j) {
-        return j + 1;
-      }
-    });
-
-    console.log(left, right);
-  };
-
-  // redraw();
-
+Template.board.events({
+  'click #btnReset': function () {
+    board.reset();
+  }
 });
