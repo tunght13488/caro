@@ -5,6 +5,8 @@
 
 standard-app-packages
 preserve-inputs
-
 smart-collections
 browser-policy
+accounts-ui
+accounts-google
+bootstrap
